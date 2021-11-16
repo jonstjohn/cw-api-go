@@ -1,53 +1,47 @@
-// Sample run-helloworld is a minimal Cloud Run service.
-//package main
-
-// import (
-// 	"fmt"
-// 	"log"
-// 	"net/http"
-// 	"os"
-// )
-
-// func main() {
-// 	log.Print("starting server...")
-// 	http.HandleFunc("/", handler)
-
-// 	// Determine port for HTTP service.
-// 	port := os.Getenv("PORT")
-// 	if port == "" {
-// 		port = "8080"
-// 		log.Printf("defaulting to port %s", port)
-// 	}
-
-// 	// Start HTTP server.
-// 	log.Printf("listening on port %s", port)
-// 	if err := http.ListenAndServe(":"+port, nil); err != nil {
-// 		log.Fatal(err)
-// 	}
-// }
-
-// func handler(w http.ResponseWriter, r *http.Request) {
-// 	name := os.Getenv("NAME")
-// 	if name == "" {
-// 		name = "World"
-// 	}
-// 	fmt.Fprintf(w, "Hello %s!\n", name)
-// }
+// user=cwapp password=%s database=cw host=/cloudsql/api-project-736062072361:us-central1:cw-pg-dev # /.s.PGSQL.5432
 
 package main
 
 import (
+	"context"
 	"fmt"
+	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/jackc/pgx/v4"
 )
 
 func main() {
 	r := gin.Default()
-	r.GET("/ping", func(c *gin.Context) {
+	r.GET("/area/:areaId/forecast", func(c *gin.Context) {
+
+		areaId, err := strconv.Atoi(c.Param("areaId"))
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Area ID is not an integer: %v\n", err)
+			os.Exit(1)
+		}
+		url := os.Getenv("DB_URL")
+
+		conn, err := pgx.Connect(context.Background(), url)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "Unable to connect to database: %v\n", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+		defer conn.Close(context.Background())
+
+		var name string
+		err = conn.QueryRow(context.Background(), "select name from area where area_id=$1", areaId).Scan(&name)
+		if err != nil {
+			fmt.Fprintf(os.Stderr, "QueryRow failed: %v\n", err)
+			c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+			return
+		}
+
 		c.JSON(200, gin.H{
-			"message": "pong",
+			"message": name,
 		})
 	})
 	port := os.Getenv("PORT")
