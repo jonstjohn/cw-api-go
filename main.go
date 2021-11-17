@@ -1,4 +1,4 @@
-// user=cwapp password=%s database=cw host=/cloudsql/api-project-736062072361:us-central1:cw-pg-dev # /.s.PGSQL.5432
+// user=cwapp password=%s database=cw host=/cloudsql/api-project-XXXX:us-central1:cw-pg-dev # /.s.PGSQL.5432
 
 package main
 
